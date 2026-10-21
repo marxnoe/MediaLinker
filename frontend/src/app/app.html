@@ -1,35 +1,68 @@
-<main>
-  <h1 nz-typography>Noecore MediaLinker</h1>
-  <p nz-typography nzType="secondary">Upload a media file or grab a YouTube video, get a direct link to it.</p>
+<na-app>
+  <na-page maxWidth="sm">
+    <na-stack gap="lg">
+      <na-stack gap="sm">
+        <na-heading level="1">Noecore MediaLinker</na-heading>
+        <na-text tone="muted">
+          Upload a media file or grab a YouTube video, get a direct link to it.
+        </na-text>
+      </na-stack>
 
-  <nz-card>
-    <nz-tabs>
-      <nz-tab nzTitle="Upload file">
-        <nz-upload nzType="drag" nzAction="/upload" nzName="file" [nzLimit]="1" (nzChange)="onChange($event)">
-          <p class="ant-upload-drag-icon"><nz-icon nzType="inbox" /></p>
-          <p class="ant-upload-text">Click or drag a file here to upload</p>
-          <p class="ant-upload-hint">{{ hint() }}</p>
-        </nz-upload>
-      </nz-tab>
+      <na-card>
+        <na-tabs [(active)]="tab">
+          <na-tab id="upload" title="Upload file">
+            <na-stack gap="md">
+              <na-upload
+                action="/upload"
+                name="file"
+                [limit]="1"
+                [drag]="true"
+                (change)="onChange($event)"
+              />
+              <na-text tone="faint" size="sm">{{ hint() }}</na-text>
+            </na-stack>
+          </na-tab>
 
-      <nz-tab nzTitle="YouTube">
-        <input nz-input placeholder="https://www.youtube.com/watch?v=..." [(ngModel)]="ytUrl" [disabled]="loading()" />
-        <nz-radio-group [(ngModel)]="ytFormat" [nzDisabled]="loading()">
-          <label nz-radio-button nzValue="mp4">MP4 (video)</label>
-          <label nz-radio-button nzValue="mp3">MP3 (audio)</label>
-        </nz-radio-group>
-        <button nz-button nzType="primary" [nzLoading]="loading()" [disabled]="!ytUrl" (click)="convert()">Get link</button>
-      </nz-tab>
-    </nz-tabs>
-  </nz-card>
+          <na-tab id="youtube" title="YouTube">
+            <na-stack gap="md">
+              <na-field label="Video URL">
+                <input
+                  naInput
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  [(ngModel)]="ytUrl"
+                  [disabled]="loading()"
+                />
+              </na-field>
 
-  @if (url()) {
-    <nz-alert nzType="success" nzShowIcon nzMessage="Your direct link" [nzDescription]="link" />
-    <ng-template #link>
-      <a [href]="url()" target="_blank" rel="noopener" nz-typography nzCopyable [nzCopyText]="url()">{{ url() }}</a>
-    </ng-template>
-  }
-  @if (error()) {
-    <nz-alert nzType="error" nzShowIcon [nzMessage]="error()" />
-  }
-</main>
+              <na-radio-group
+                variant="segmented"
+                orientation="inline"
+                [options]="formats"
+                [(value)]="ytFormat"
+                [disabled]="loading()"
+              />
+
+              <na-button
+                variant="primary"
+                [loading]="loading()"
+                [disabled]="!ytUrl"
+                (pressed)="convert()"
+              >
+                Get link
+              </na-button>
+            </na-stack>
+          </na-tab>
+        </na-tabs>
+      </na-card>
+
+      @if (url()) {
+        <na-alert tone="success" showIcon title="Your direct link" closable>
+          <na-link [href]="url()" copyable [copyText]="url()">{{ url() }}</na-link>
+        </na-alert>
+      }
+      @if (error()) {
+        <na-alert tone="danger" showIcon [title]="error()" closable />
+      }
+    </na-stack>
+  </na-page>
+</na-app>
