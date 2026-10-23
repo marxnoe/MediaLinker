@@ -18,6 +18,7 @@ services:
       YT_PROXY: socks5h://tailscale:1055
     volumes:
       - uploads:/data/uploads
+      - shares:/data/shares
 
   # Joins the tailnet in userspace mode (no NET_ADMIN/TUN needed) and exposes a SOCKS5
   # proxy that egresses through the exit node at home. Nothing else is routed through it.
@@ -37,4 +38,5 @@ services:
 
 volumes:
   uploads:
+  shares:
   tailscale:
