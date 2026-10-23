@@ -4,12 +4,13 @@
       <na-stack gap="sm">
         <na-heading level="1">Noecore MediaLinker</na-heading>
         <na-text tone="muted">
-          Upload a media file or grab a YouTube video, get a direct link to it.
+          Upload a media file or grab a YouTube video, get a direct link to it. Or share any file or
+          text with a short code.
         </na-text>
       </na-stack>
 
       <na-card>
-        <na-tabs [(active)]="tab">
+        <na-tabs [(activeId)]="tab">
           <na-tab id="upload" title="Upload file">
             <na-stack gap="md">
               <na-upload
@@ -52,6 +53,85 @@
               </na-button>
             </na-stack>
           </na-tab>
+
+          <na-tab id="share" title="Share">
+            <na-stack gap="md">
+              <na-radio-group
+                variant="segmented"
+                orientation="inline"
+                [options]="shareKinds"
+                [(value)]="shareKind"
+              />
+
+              @if (shareKind === 'file') {
+                <na-upload
+                  name="file"
+                  [action]="shareAction()"
+                  [limit]="1"
+                  [drag]="true"
+                  (change)="onShareChange($event)"
+                />
+              } @else {
+                <na-field label="Text">
+                  <textarea
+                    naInput
+                    rows="6"
+                    placeholder="Paste anything here..."
+                    [(ngModel)]="shareText"
+                    [disabled]="loading()"
+                  ></textarea>
+                </na-field>
+              }
+
+              <na-radio-group
+                label="Expires after"
+                variant="segmented"
+                orientation="inline"
+                [options]="ttls()"
+                [(value)]="shareTtl"
+              />
+
+              @if (shareKind === 'text') {
+                <na-button
+                  variant="primary"
+                  [loading]="loading()"
+                  [disabled]="!shareText.trim()"
+                  (pressed)="shareTextNow()"
+                >
+                  Get code
+                </na-button>
+              } @else {
+                <na-text tone="faint" size="sm">Any file type · max {{ maxMb() }} MB</na-text>
+              }
+            </na-stack>
+          </na-tab>
+
+          <na-tab id="code" title="Enter code">
+            <na-stack gap="md">
+              <na-field label="Code">
+                <input
+                  naInput
+                  class="code-input"
+                  maxlength="5"
+                  autocomplete="off"
+                  autocapitalize="characters"
+                  spellcheck="false"
+                  placeholder="K7QX2"
+                  [(ngModel)]="code"
+                  [disabled]="loading()"
+                  (keyup.enter)="open()"
+                />
+              </na-field>
+              <na-button
+                variant="primary"
+                [loading]="loading()"
+                [disabled]="code.trim().length !== 5"
+                (pressed)="open()"
+              >
+                Open
+              </na-button>
+            </na-stack>
+          </na-tab>
         </na-tabs>
       </na-card>
 
@@ -60,6 +140,49 @@
           <na-link [href]="url()" copyable [copyText]="url()">{{ url() }}</na-link>
         </na-alert>
       }
+
+      @if (created(); as c) {
+        <na-card title="Your code">
+          <na-stack gap="md">
+            <div class="code">{{ c.code }}</div>
+            <na-text tone="muted" size="sm">
+              Anyone can enter this code to see what you shared. Expires {{ expires(c.expiresAt) }}.
+            </na-text>
+            <na-link [href]="shareLink()" copyable [copyText]="shareLink()">{{
+              shareLink()
+            }}</na-link>
+          </na-stack>
+        </na-card>
+      }
+
+      @if (share(); as s) {
+        <na-card [title]="s.kind === 'text' ? 'Shared text' : (s.name ?? 'Shared file')">
+          <na-stack gap="md">
+            @if (s.kind === 'text') {
+              <pre class="shared-text">{{ s.text }}</pre>
+              <na-button (pressed)="copy(s.text ?? '')">Copy text</na-button>
+            } @else {
+              @switch (preview()) {
+                @case ('image') {
+                  <img class="preview" [src]="s.url" [alt]="s.name" />
+                }
+                @case ('video') {
+                  <video class="preview" controls [src]="s.url"></video>
+                }
+                @case ('audio') {
+                  <audio controls [src]="s.url"></audio>
+                }
+              }
+              <na-text tone="muted" size="sm">{{ s.mime }} · {{ size(s.size) }}</na-text>
+              <na-link [href]="s.url + '?download=1'">Download {{ s.name }}</na-link>
+            }
+            <na-text tone="faint" size="sm"
+              >Code {{ s.code }} · expires {{ expires(s.expiresAt) }}</na-text
+            >
+          </na-stack>
+        </na-card>
+      }
+
       @if (error()) {
         <na-alert tone="danger" showIcon [title]="error()" closable />
       }
