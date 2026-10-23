@@ -1,5 +1,4 @@
 mod share;
-mod youtube;
 
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -32,8 +31,6 @@ pub struct Config {
     pub max_mb: u64,
     pub upload_dir: PathBuf,
     pub share_dir: PathBuf,
-    pub yt_max_jobs: usize,
-    pub yt_proxy: Option<String>,
 }
 
 impl Config {
@@ -44,7 +41,6 @@ impl Config {
 
 pub struct AppState {
     pub cfg: Config,
-    pub yt: youtube::Jobs,
     pub shares: share::Store,
 }
 
@@ -171,8 +167,6 @@ async fn main() {
         max_mb: env_or("MAX_UPLOAD_MB", 500),
         upload_dir: env_or("UPLOAD_DIR", PathBuf::from("/data/uploads")),
         share_dir: env_or("SHARE_DIR", PathBuf::from("/data/shares")),
-        yt_max_jobs: env_or("YT_MAX_JOBS", 2),
-        yt_proxy: env::var("YT_PROXY").ok().filter(|v| !v.is_empty()),
     };
     let public_dir: PathBuf = env_or("PUBLIC_DIR", PathBuf::from("public"));
     std::fs::create_dir_all(&cfg.upload_dir).expect("cannot create UPLOAD_DIR");
@@ -180,11 +174,7 @@ async fn main() {
 
     let body_limit = DefaultBodyLimit::max((cfg.max_bytes() + 1024 * 1024) as usize);
     let shares = share::Store::load(&cfg.share_dir).await;
-    let state = Arc::new(AppState {
-        cfg,
-        yt: youtube::Jobs::default(),
-        shares,
-    });
+    let state = Arc::new(AppState { cfg, shares });
     share::spawn_sweeper(state.clone());
 
     let files = ServiceBuilder::new()
@@ -209,7 +199,6 @@ async fn main() {
     let app = Router::new()
         .route("/config", get(config))
         .route("/upload", post(upload).layer(body_limit))
-        .route("/youtube", post(youtube::handler))
         .route("/share", post(share::create).layer(body_limit))
         .route("/share/{code}", get(share::info))
         .route("/s/{code}/file", get(share::file))

@@ -8,35 +8,14 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
-    depends_on:
-      - tailscale
     environment:
       DOMAIN: ${DOMAIN:?Set DOMAIN, e.g. DOMAIN=media.example.com}
       SCHEME: ${SCHEME:-https}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-500}
-      # Only yt-dlp uses this proxy, so YouTube downloads leave via the home connection.
-      YT_PROXY: socks5h://tailscale:1055
     volumes:
       - uploads:/data/uploads
       - shares:/data/shares
 
-  # Joins the tailnet in userspace mode (no NET_ADMIN/TUN needed) and exposes a SOCKS5
-  # proxy that egresses through the exit node at home. Nothing else is routed through it.
-  tailscale:
-    image: tailscale/tailscale:stable
-    restart: unless-stopped
-    hostname: medialinker
-    environment:
-      TS_AUTHKEY: ${TS_AUTHKEY:?Set TS_AUTHKEY (reusable Tailscale auth key)}
-      TS_EXTRA_ARGS: --exit-node=${TS_EXIT_NODE:?Set TS_EXIT_NODE to your home node's Tailscale IP (100.x.y.z), not its name}
-      TS_USERSPACE: "true"
-      TS_SOCKS5_SERVER: 0.0.0.0:1055
-      TS_STATE_DIR: /var/lib/tailscale
-      TS_HOSTNAME: medialinker
-    volumes:
-      - tailscale:/var/lib/tailscale
-
 volumes:
   uploads:
   shares:
-  tailscale:

@@ -4,8 +4,8 @@
       <na-stack gap="sm">
         <na-heading level="1">Noecore MediaLinker</na-heading>
         <na-text tone="muted">
-          Upload a media file or grab a YouTube video, get a direct link to it. Or share any file or
-          text with a short code.
+          Upload a media file and get a direct link to it, or share any file or text with a short
+          code.
         </na-text>
       </na-stack>
 
@@ -21,36 +21,6 @@
                 (change)="onChange($event)"
               />
               <na-text tone="faint" size="sm">{{ hint() }}</na-text>
-            </na-stack>
-          </na-tab>
-
-          <na-tab id="youtube" title="YouTube">
-            <na-stack gap="md">
-              <na-field label="Video URL">
-                <input
-                  naInput
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  [(ngModel)]="ytUrl"
-                  [disabled]="loading()"
-                />
-              </na-field>
-
-              <na-radio-group
-                variant="segmented"
-                orientation="inline"
-                [options]="formats"
-                [(value)]="ytFormat"
-                [disabled]="loading()"
-              />
-
-              <na-button
-                variant="primary"
-                [loading]="loading()"
-                [disabled]="!ytUrl"
-                (pressed)="convert()"
-              >
-                Get link
-              </na-button>
             </na-stack>
           </na-tab>
 

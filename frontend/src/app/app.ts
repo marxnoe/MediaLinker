@@ -82,18 +82,11 @@ export class App implements OnInit {
   protected readonly share = signal<Share | null>(null);
   protected readonly ttls = signal<{ value: string; label: string }[]>([]);
 
-  protected ytUrl = '';
-  protected ytFormat = 'mp4';
   protected tab: NaTabKey | null = 'upload';
   protected shareKind = 'file';
   protected shareTtl = '24h';
   protected shareText = '';
   protected code = '';
-
-  protected readonly formats = [
-    { value: 'mp4', label: 'MP4 (video)' },
-    { value: 'mp3', label: 'MP3 (audio)' },
-  ];
 
   protected readonly shareKinds = [
     { value: 'file', label: 'File' },
@@ -198,20 +191,6 @@ export class App implements OnInit {
       },
       error: (e) => this.fail(e),
     });
-  }
-
-  protected convert() {
-    this.reset();
-    this.loading.set(true);
-    this.http
-      .post<{ url: string }>('/youtube', { url: this.ytUrl, format: this.ytFormat })
-      .subscribe({
-        next: (r) => {
-          this.url.set(r.url);
-          this.loading.set(false);
-        },
-        error: (e) => this.fail(e),
-      });
   }
 
   private fail(e: { error?: { error?: string } }) {
