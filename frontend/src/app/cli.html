@@ -1,20 +1,20 @@
 <na-stack gap="lg">
   <na-text tone="muted">
-    <na-code>ml</na-code> sends and fetches shares from the terminal. It uses the same 5-character
-    codes as this page, so you can send from a server and open the code on your phone, or the other
-    way round.
+    <code>ml</code> sends and fetches shares from the terminal. It uses the same 5-character codes
+    as this page, so you can send from a server and open the code on your phone, or the other way
+    round.
   </na-text>
 
   <na-card title="Install">
     <na-stack gap="md">
       <na-text tone="muted">
-        <na-code>ml</na-code> is on crates.io. With
+        <code>ml</code> is on crates.io. With
         <a href="https://rustup.rs" target="_blank" rel="noopener">Rust</a> installed, run:
       </na-text>
       <pre class="cmd">cargo install medialinker-cli</pre>
       <na-text tone="faint" size="sm">
-        This builds <na-code>ml</na-code> from source and puts it in
-        <na-code>~/.cargo/bin</na-code>. Run the same command again to update.
+        This builds <code>ml</code> from source and puts it in <code>~/.cargo/bin</code>. Run the
+        same command again to update.
       </na-text>
     </na-stack>
   </na-card>
@@ -22,33 +22,37 @@
   <na-card title="Send">
     <na-stack gap="md">
       <na-text tone="muted">
-        <na-code>ml send</na-code> prints the code. In a terminal it also prints a QR code and a
-        link to this page, so a phone can open the share straight away.
+        <code>ml send</code> prints the code. In a terminal it also prints a QR code and a link to
+        this page, so a phone can open the share straight away.
       </na-text>
       <pre class="cmd">ml send photo.jpg              <span class="comment"># share a file</span>
 ml send "meet at 6"            <span class="comment"># share some text</span>
-ml send notes.txt --text       <span class="comment"># share the words "notes.txt", not the file</span>
-ml send video.mp4 --ttl 7d     <span class="comment"># expiry: 1h, 24h (default) or 7d</span>
+ml send notes.txt --text       <span class="comment"># send the name as text</span>
+ml send video.mp4 --ttl 7d     <span class="comment"># 1h, 24h (default) or 7d</span>
 ml send report.pdf --no-qr     <span class="comment"># leave out the QR code</span></pre>
       <na-heading level="4">Pipes</na-heading>
       <na-text tone="muted">
-        With nothing to send, or <na-code>-</na-code>, <na-code>ml send</na-code> reads stdin. Text
-        is sent as text; add <na-code>--name</na-code> to send it as a file.
+        With nothing to send, or <code>-</code>, <code>ml send</code> reads stdin. Text is sent as
+        text; add <code>--name</code> to send it as a file.
       </na-text>
-      <pre class="cmd">cat log.txt | ml send                 <span class="comment"># share a log as text</span>
+      <pre
+        class="cmd"
+      >cat log.txt | ml send                    <span class="comment"># a log, as text</span>
 journalctl -n 200 | ml send --ttl 1h
-tar cz project | ml send -n project.tgz  <span class="comment"># share stdin as a file</span>
-CODE=$(ml send build.zip)             <span class="comment"># only the code goes to stdout</span></pre>
+tar cz project | ml send -n project.tgz  <span class="comment"># stdin as a file</span>
+CODE=$(ml send build.zip)                <span class="comment"># stdout gets only the code</span></pre>
     </na-stack>
   </na-card>
 
   <na-card title="Get">
     <na-stack gap="md">
       <na-text tone="muted">
-        <na-code>ml get</na-code> prints text, or saves a file in the current directory. It never
-        overwrites a file unless you pass <na-code>--force</na-code>.
+        <code>ml get</code> prints text, or saves a file in the current directory. It never
+        overwrites a file unless you pass <code>--force</code>.
       </na-text>
-      <pre class="cmd">ml get K7QX2                   <span class="comment"># print the text or save the file</span>
+      <pre
+        class="cmd"
+      >ml get K7QX2                   <span class="comment"># print text or save file</span>
 ml get K7QX2 -o out.jpg        <span class="comment"># save under another name</span>
 ml get K7QX2 -o - | less       <span class="comment"># write to stdout</span></pre>
     </na-stack>
@@ -57,11 +61,12 @@ ml get K7QX2 -o - | less       <span class="comment"># write to stdout</span></p
   <na-card title="Shell completions">
     <na-stack gap="md">
       <na-text tone="muted">
-        <na-code>ml completions</na-code> prints a completion script for bash, zsh, fish, PowerShell
-        or elvish.
+        <code>ml completions</code> prints a completion script for bash, zsh, fish, PowerShell or
+        elvish.
       </na-text>
       <pre class="cmd"><span class="comment"># bash</span>
-ml completions bash > ~/.local/share/bash-completion/completions/ml
+ml completions bash > ~/.local/share/bash-completion/\
+  completions/ml
 <span class="comment"># zsh (with fpath+=~/.zfunc in .zshrc)</span>
 ml completions zsh > ~/.zfunc/_ml
 <span class="comment"># fish</span>
@@ -74,14 +79,13 @@ ml completions powershell >> $PROFILE</pre>
   <na-card title="Server">
     <na-stack gap="md">
       <na-text tone="muted">
-        <na-code>ml</na-code> uses https://medialinker.noecore.com unless you tell it otherwise. To
-        use this server, save it once:
+        <code>ml</code> uses https://medialinker.noecore.com unless you tell it otherwise. To use
+        this server, save it once:
       </na-text>
       <pre class="cmd">ml server {{ server }}</pre>
       <na-text tone="faint" size="sm">
-        <na-code>ml server</na-code> on its own shows the saved server.
-        <na-code>--server URL</na-code> or the <na-code>ML_SERVER</na-code> environment variable
-        override it for one command.
+        <code>ml server</code> on its own shows the saved server. <code>--server URL</code> or the
+        <code>ML_SERVER</code> environment variable override it for one command.
       </na-text>
     </na-stack>
   </na-card>
