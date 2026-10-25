@@ -19,6 +19,7 @@ import {
   NaUpload,
   NaUploadChangeEvent,
 } from 'newang';
+import { Cli } from './cli';
 
 interface Config {
   maxMb: number;
@@ -46,6 +47,7 @@ const TTL_LABELS: Record<string, string> = { '1h': '1 hour', '24h': '24 hours', 
 @Component({
   selector: 'app-root',
   imports: [
+    Cli,
     FormsModule,
     NaAlert,
     NaApp,
@@ -68,6 +70,9 @@ const TTL_LABELS: Record<string, string> = { '1h': '1 hour', '24h': '24 hours', 
 })
 export class App implements OnInit {
   private readonly http = inject(HttpClient);
+
+  // `#cli` shows the command line docs; a hash keeps the server's plain static file serving working.
+  protected readonly view = signal(location.hash === '#cli' ? 'cli' : 'share');
 
   protected readonly codeLength = CODE_LENGTH;
   protected readonly maxMb = signal(0);
@@ -112,6 +117,11 @@ export class App implements OnInit {
   });
 
   ngOnInit() {
+    addEventListener('hashchange', () => {
+      this.view.set(location.hash === '#cli' ? 'cli' : 'share');
+      scrollTo(0, 0);
+    });
+
     this.http.get<Config>('/config').subscribe((c) => {
       this.maxMb.set(c.maxMb);
       this.extensions.set(c.extensions);

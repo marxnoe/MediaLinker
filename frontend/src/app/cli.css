@@ -1,0 +1,25 @@
+.cmd {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--na-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  background: var(--na-surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--na-border, rgba(255, 255, 255, 0.1));
+}
+
+.comment {
+  color: var(--na-text-faint, rgba(255, 255, 255, 0.45));
+}
+
+code {
+  padding: 1px 5px;
+  white-space: nowrap;
+  font-family: var(--na-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  color: var(--na-accent, #d4ef7a);
+  background: var(--na-surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--na-border, rgba(255, 255, 255, 0.1));
+}
