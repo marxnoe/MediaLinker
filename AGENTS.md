@@ -34,7 +34,8 @@ Each submodule is its own GitHub repo with its own issues.
 | Path | Repo |
 | --- | --- |
 | `.` | `marxnoe/main` |
-| `projects/MediaLinker` | `marxnoe/MediaLinker` |
+| `projects/MediaLinker/MediaLinker` | `marxnoe/MediaLinker` |
+| `projects/MediaLinker/MediaLinker-cli` | `marxnoe/MediaLinker-cli` |
 | `frameworks/newang/newang` | `marxnoe/newang` |
 | `frameworks/newang/newang-docs` | `marxnoe/newang-docs` |
 
