@@ -3,184 +3,196 @@
     <na-stack gap="lg">
       <na-stack gap="sm">
         <na-heading level="1">Noecore MediaLinker</na-heading>
-        <na-text tone="muted">
-          Send a file or some text and get a short code to pass on. Whoever types the code in sees
-          the same thing.
-        </na-text>
+        @if (view() === 'cli') {
+          <na-text tone="muted"><a href="#">← Back to sharing</a></na-text>
+        } @else {
+          <na-text tone="muted">
+            Send a file or some text and get a short code to pass on. Whoever types the code in sees
+            the same thing.
+          </na-text>
+        }
       </na-stack>
 
-      <!-- Receive -->
-      <na-card
-        [title]="share() ? 'Shared with you' : 'Got a code?'"
-        [subtitle]="share() ? '' : 'Type or paste it to see what was shared with you.'"
-      >
-        @if (share(); as s) {
-          <na-stack gap="md">
-            <na-row justify="between">
-              <na-text size="lg">
-                <strong>{{ s.kind === 'text' ? 'Text' : s.name }}</strong>
-              </na-text>
-              <na-button variant="ghost" size="sm" (pressed)="closeShare()">Close</na-button>
-            </na-row>
-
-            @if (s.kind === 'text') {
-              <pre class="shared-text">{{ s.text }}</pre>
-              <na-row gap="sm">
-                <na-button variant="primary" (pressed)="copy('text', s.text ?? '')">
-                  {{ copied() === 'text' ? 'Copied!' : 'Copy text' }}
-                </na-button>
+      @if (view() === 'cli') {
+        <app-cli />
+      } @else {
+        <!-- Receive -->
+        <na-card
+          [title]="share() ? 'Shared with you' : 'Got a code?'"
+          [subtitle]="share() ? '' : 'Type or paste it to see what was shared with you.'"
+        >
+          @if (share(); as s) {
+            <na-stack gap="md">
+              <na-row justify="between">
+                <na-text size="lg">
+                  <strong>{{ s.kind === 'text' ? 'Text' : s.name }}</strong>
+                </na-text>
+                <na-button variant="ghost" size="sm" (pressed)="closeShare()">Close</na-button>
               </na-row>
-            } @else {
-              @switch (preview()) {
-                @case ('image') {
-                  <img class="preview" [src]="s.url" [alt]="s.name" />
+
+              @if (s.kind === 'text') {
+                <pre class="shared-text">{{ s.text }}</pre>
+                <na-row gap="sm">
+                  <na-button variant="primary" (pressed)="copy('text', s.text ?? '')">
+                    {{ copied() === 'text' ? 'Copied!' : 'Copy text' }}
+                  </na-button>
+                </na-row>
+              } @else {
+                @switch (preview()) {
+                  @case ('image') {
+                    <img class="preview" [src]="s.url" [alt]="s.name" />
+                  }
+                  @case ('video') {
+                    <video class="preview" controls [src]="s.url"></video>
+                  }
+                  @case ('audio') {
+                    <audio class="audio" controls [src]="s.url"></audio>
+                  }
                 }
-                @case ('video') {
-                  <video class="preview" controls [src]="s.url"></video>
-                }
-                @case ('audio') {
-                  <audio class="audio" controls [src]="s.url"></audio>
-                }
+                <na-row gap="sm">
+                  <a class="download" [href]="s.url + '?download=1'" [attr.download]="s.name">
+                    Download ({{ size(s.size) }})
+                  </a>
+                </na-row>
               }
-              <na-row gap="sm">
-                <a class="download" [href]="s.url + '?download=1'" [attr.download]="s.name">
-                  Download ({{ size(s.size) }})
-                </a>
-              </na-row>
-            }
-            <na-text tone="faint" size="sm"
-              >Code {{ s.code }} · {{ expiresIn(s.expiresAt) }}</na-text
-            >
-          </na-stack>
-        } @else {
-          <na-stack gap="md">
-            <na-row gap="md" align="center">
-              <na-code-input
-                #codeInput
-                label="Share code"
-                [length]="codeLength"
-                [(value)]="code"
-                [invalid]="!!receiveError()"
-                (valueChange)="onCodeChange()"
-                (completed)="open()"
-              />
-              <na-button
-                variant="secondary"
-                [loading]="opening()"
-                [disabled]="code().length !== codeLength"
-                (pressed)="open()"
+              <na-text tone="faint" size="sm"
+                >Code {{ s.code }} · {{ expiresIn(s.expiresAt) }}</na-text
               >
-                Open
-              </na-button>
-            </na-row>
-            @if (receiveError()) {
-              <na-text size="sm"
-                ><span class="error">{{ receiveError() }}</span></na-text
-              >
-            }
-          </na-stack>
-        }
-      </na-card>
-
-      <!-- Send -->
-      <na-card title="Send something">
-        @if (result(); as r) {
-          <na-stack gap="md">
-            @if (r.type === 'code') {
-              <na-text tone="muted">Give this code to the other person:</na-text>
-              <div class="code" aria-label="Your code">{{ r.code }}</div>
-              <na-row gap="sm">
-                <na-button variant="primary" (pressed)="copy('code', r.code)">
-                  {{ copied() === 'code' ? 'Copied!' : 'Copy code' }}
-                </na-button>
-                <na-button variant="secondary" (pressed)="copy('link', shareLink())">
-                  {{ copied() === 'link' ? 'Copied!' : 'Copy link' }}
-                </na-button>
-              </na-row>
-              <na-text tone="faint" size="sm">{{ expiresIn(r.expiresAt) }}</na-text>
-            } @else {
-              <na-text tone="muted">Your direct link (it doesn't expire):</na-text>
-              <na-link [href]="r.url" copyable [copyText]="r.url">{{ r.url }}</na-link>
-            }
-            <na-row>
-              <na-button variant="ghost" (pressed)="sendAnother()">Send something else</na-button>
-            </na-row>
-          </na-stack>
-        } @else {
-          <na-stack gap="md">
-            <na-radio-group
-              label="What do you want to send?"
-              variant="segmented"
-              orientation="inline"
-              [options]="kinds"
-              [(value)]="kind"
-              [disabled]="sending()"
-            />
-
-            @if (kind === 'file') {
-              <na-radio-group
-                label="What do you want back?"
-                variant="segmented"
-                orientation="inline"
-                [options]="modes"
-                [(value)]="mode"
-                [disabled]="sending()"
-              />
-            }
-
-            @if (kind === 'text' || mode === 'code') {
-              <na-radio-group
-                label="Code expires after"
-                variant="segmented"
-                orientation="inline"
-                [options]="ttls()"
-                [(value)]="ttl"
-                [disabled]="sending()"
-              />
-            }
-
-            @if (kind === 'file') {
-              <na-stack gap="sm">
-                <na-upload
-                  name="file"
-                  [action]="uploadAction()"
-                  [accept]="accept()"
-                  [limit]="1"
-                  [drag]="true"
-                  (change)="onUpload($event)"
+            </na-stack>
+          } @else {
+            <na-stack gap="md">
+              <na-row gap="md" align="center">
+                <na-code-input
+                  #codeInput
+                  label="Share code"
+                  [length]="codeLength"
+                  [(value)]="code"
+                  [invalid]="!!receiveError()"
+                  (valueChange)="onCodeChange()"
+                  (completed)="open()"
                 />
-                <na-text tone="faint" size="sm">{{ uploadHint() }}</na-text>
-              </na-stack>
-            } @else {
-              <na-field label="Text" hint="Up to 1 MB. Ctrl+Enter to send.">
-                <textarea
-                  naInput
-                  rows="6"
-                  placeholder="Paste a note, a link, a password..."
-                  [(ngModel)]="text"
-                  [disabled]="sending()"
-                  (keydown.control.enter)="sendText()"
-                  (keydown.meta.enter)="sendText()"
-                ></textarea>
-              </na-field>
-              <na-row>
                 <na-button
-                  variant="primary"
-                  [loading]="sending()"
-                  [disabled]="!text.trim()"
-                  (pressed)="sendText()"
+                  variant="secondary"
+                  [loading]="opening()"
+                  [disabled]="code().length !== codeLength"
+                  (pressed)="open()"
                 >
-                  Get code
+                  Open
                 </na-button>
               </na-row>
-            }
+              @if (receiveError()) {
+                <na-text size="sm"
+                  ><span class="error">{{ receiveError() }}</span></na-text
+                >
+              }
+            </na-stack>
+          }
+        </na-card>
 
-            @if (sendError()) {
-              <na-alert tone="danger" showIcon [title]="sendError()" closable />
-            }
-          </na-stack>
-        }
-      </na-card>
+        <!-- Send -->
+        <na-card title="Send something">
+          @if (result(); as r) {
+            <na-stack gap="md">
+              @if (r.type === 'code') {
+                <na-text tone="muted">Give this code to the other person:</na-text>
+                <div class="code" aria-label="Your code">{{ r.code }}</div>
+                <na-row gap="sm">
+                  <na-button variant="primary" (pressed)="copy('code', r.code)">
+                    {{ copied() === 'code' ? 'Copied!' : 'Copy code' }}
+                  </na-button>
+                  <na-button variant="secondary" (pressed)="copy('link', shareLink())">
+                    {{ copied() === 'link' ? 'Copied!' : 'Copy link' }}
+                  </na-button>
+                </na-row>
+                <na-text tone="faint" size="sm">{{ expiresIn(r.expiresAt) }}</na-text>
+              } @else {
+                <na-text tone="muted">Your direct link (it doesn't expire):</na-text>
+                <na-link [href]="r.url" copyable [copyText]="r.url">{{ r.url }}</na-link>
+              }
+              <na-row>
+                <na-button variant="ghost" (pressed)="sendAnother()">Send something else</na-button>
+              </na-row>
+            </na-stack>
+          } @else {
+            <na-stack gap="md">
+              <na-radio-group
+                label="What do you want to send?"
+                variant="segmented"
+                orientation="inline"
+                [options]="kinds"
+                [(value)]="kind"
+                [disabled]="sending()"
+              />
+
+              @if (kind === 'file') {
+                <na-radio-group
+                  label="What do you want back?"
+                  variant="segmented"
+                  orientation="inline"
+                  [options]="modes"
+                  [(value)]="mode"
+                  [disabled]="sending()"
+                />
+              }
+
+              @if (kind === 'text' || mode === 'code') {
+                <na-radio-group
+                  label="Code expires after"
+                  variant="segmented"
+                  orientation="inline"
+                  [options]="ttls()"
+                  [(value)]="ttl"
+                  [disabled]="sending()"
+                />
+              }
+
+              @if (kind === 'file') {
+                <na-stack gap="sm">
+                  <na-upload
+                    name="file"
+                    [action]="uploadAction()"
+                    [accept]="accept()"
+                    [limit]="1"
+                    [drag]="true"
+                    (change)="onUpload($event)"
+                  />
+                  <na-text tone="faint" size="sm">{{ uploadHint() }}</na-text>
+                </na-stack>
+              } @else {
+                <na-field label="Text" hint="Up to 1 MB. Ctrl+Enter to send.">
+                  <textarea
+                    naInput
+                    rows="6"
+                    placeholder="Paste a note, a link, a password..."
+                    [(ngModel)]="text"
+                    [disabled]="sending()"
+                    (keydown.control.enter)="sendText()"
+                    (keydown.meta.enter)="sendText()"
+                  ></textarea>
+                </na-field>
+                <na-row>
+                  <na-button
+                    variant="primary"
+                    [loading]="sending()"
+                    [disabled]="!text.trim()"
+                    (pressed)="sendText()"
+                  >
+                    Get code
+                  </na-button>
+                </na-row>
+              }
+
+              @if (sendError()) {
+                <na-alert tone="danger" showIcon [title]="sendError()" closable />
+              }
+            </na-stack>
+          }
+        </na-card>
+
+        <na-text tone="faint" size="sm">
+          Prefer the terminal? <a href="#cli">Use MediaLinker from the command line</a>.
+        </na-text>
+      }
     </na-stack>
   </na-page>
 </na-app>
