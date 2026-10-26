@@ -29,6 +29,7 @@ type ServerMsg =
   | { t: 'stale'; id: string; clip: ServerClip }
   | { t: 'devices'; n: number }
   | { t: 'error'; error: string }
+  | { t: 'ended' }
   | { t: 'pong' };
 
 /** The latest clip, as this page shows it. */
@@ -48,6 +49,7 @@ interface Saved {
   name: string;
 }
 
+// Session storage: the room survives reloads and the phone locking, and is forgotten with the tab.
 const STORAGE = 'ml-clip';
 /** Longer text goes as a blob, like in `ml`. */
 const INLINE_TEXT = 32 * 1024;
@@ -69,7 +71,7 @@ function deviceName() {
 
 function loadSaved(): Saved | null {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE) ?? 'null') as Saved | null;
+    const saved = JSON.parse(sessionStorage.getItem(STORAGE) ?? 'null') as Saved | null;
     return saved && fromBase64Url(saved.key)?.length === 32 ? saved : null;
   } catch {
     return null;
@@ -240,7 +242,7 @@ export class Clip implements OnInit, OnDestroy {
       const thanksBytes = new Uint8Array(await thanks.arrayBuffer());
       ws.send(JSON.stringify({ t: 'msg', data: toBase64Url(thanksBytes) }));
       const saved = { key: welcome.key, name };
-      localStorage.setItem(STORAGE, JSON.stringify(saved));
+      sessionStorage.setItem(STORAGE, JSON.stringify(saved));
       this.saved.set(saved);
       this.codeText = '';
       this.notice.set(`Paired with ${welcome.from}.`);
@@ -256,14 +258,16 @@ export class Clip implements OnInit, OnDestroy {
     }
   }
 
-  protected forget() {
-    localStorage.removeItem(STORAGE);
+  protected forget(notice = 'This browser left the room. Your other devices stay paired.') {
+    sessionStorage.removeItem(STORAGE);
     this.saved.set(null);
+    this.roomKey = null;
     this.disconnect();
     this.revoke();
     this.shown.set(null);
     this.current = null;
-    this.notice.set('This browser left the room. Your other devices stay paired.');
+    this.pending = null;
+    this.notice.set(notice);
   }
 
   // ---- Connection ----
@@ -344,6 +348,11 @@ export class Clip implements OnInit, OnDestroy {
         break;
       case 'devices':
         this.devices.set(msg.n);
+        break;
+      case 'ended':
+        this.forget(
+          'A computer stopped syncing, so the room ended. Run ml clip sync to start a new one.',
+        );
         break;
       case 'error':
         this.error.set(msg.error);

@@ -107,7 +107,8 @@
       <na-text tone="muted" size="sm">{{ notice() }}</na-text>
     }
     <na-text tone="faint" size="sm">
-      End-to-end encrypted: the server only relays ciphertext. This browser is "{{ room.name }}".
+      End-to-end encrypted: the server only relays ciphertext. The room ends when a computer stops
+      syncing, and this tab forgets it when you close it. This browser is "{{ room.name }}".
       <button class="link-button" type="button" (click)="forget()">Leave the room</button>
     </na-text>
   </na-stack>
@@ -148,7 +149,8 @@
       }
       <na-text tone="faint" size="sm">
         Copies on your computers sync by themselves. On a phone, open this page to copy what's on
-        the shared clipboard or to send your own. <a href="#cli">How to install ml</a>.
+        the shared clipboard or to send your own. The room lasts until one of the computers stops
+        <code>ml clip sync</code>. <a href="#cli">How to install ml</a>.
       </na-text>
     </na-stack>
   </na-card>

@@ -9,6 +9,10 @@
 //! Pairing codes look like `K7X-42PQ`. The server hands out the public first half, the "plate", and
 //! relays a PAKE exchange between the two devices that only the secret second half can complete, so
 //! it learns neither the code nor the room key.
+//!
+//! A room lasts one session: devices keep the key in memory only, and when one of them stops syncing
+//! (closed terminal, Ctrl+C, restart) it sends `end`. The server tells every device the room ended,
+//! drops its clips, and remembers the ID for a while so a device that slept through it hears too.
 
 use std::{
     collections::{HashMap, VecDeque},
@@ -51,7 +55,9 @@ const MAX_SLOTS: usize = 10_000;
 const MAX_META: usize = 256 * 1024;
 /// Blobs kept per room: the latest clip's and a couple before it, for devices still downloading those.
 const KEEP_BLOBS: usize = 3;
-const ROOM_TTL: u64 = 30 * 86_400;
+/// Rooms nobody has connected to for this long are deleted, and so are ended rooms' tombstones.
+const ROOM_TTL: u64 = 7 * 86_400;
+const ENDED: &str = r#"{"t":"ended"}"#;
 const PING_EVERY: Duration = Duration::from_secs(20);
 /// A device that hasn't answered for this long is gone (asleep, or its network vanished).
 const DEAD_AFTER: Duration = Duration::from_secs(60);
@@ -116,6 +122,8 @@ struct Room {
     tx: broadcast::Sender<Arc<str>>,
     devices: usize,
     active: u64,
+    /// A device ended the session; the ID is kept only to tell latecomers.
+    ended: bool,
 }
 
 impl Room {
@@ -127,6 +135,7 @@ impl Room {
             tx: broadcast::channel(64).0,
             devices: 0,
             active: now(),
+            ended: false,
         }
     }
 }
@@ -179,6 +188,17 @@ impl Clips {
             while let Ok(Some(e)) = entries.next_entry().await {
                 let path = e.path();
                 let name = e.file_name().to_string_lossy().into_owned();
+                let ended = fs::read_to_string(path.join("ended"))
+                    .await
+                    .ok()
+                    .and_then(|s| s.trim().parse::<u64>().ok());
+                if let Some(at) = ended.filter(|at| valid_id(&name) && at + ROOM_TTL > now()) {
+                    let mut room = Room::new();
+                    room.ended = true;
+                    room.active = at;
+                    rooms.insert(name, room);
+                    continue;
+                }
                 let clip = fs::read(path.join("latest.json"))
                     .await
                     .ok()
@@ -225,16 +245,20 @@ impl Clips {
         }
     }
 
-    /// Adds a device to a room; returns its greeting and its feed of the room's messages.
-    fn join(&self, room: &str) -> (String, broadcast::Receiver<Arc<str>>) {
+    /// Adds a device to a room; returns its greeting and its feed of the room's messages, or `None`
+    /// if the room has ended.
+    fn join(&self, room: &str) -> Option<(String, broadcast::Receiver<Arc<str>>)> {
         let mut rooms = self.rooms.lock().unwrap();
         let r = rooms.entry(room.to_string()).or_insert_with(Room::new);
+        if r.ended {
+            return None;
+        }
         r.devices += 1;
         r.active = now();
         let rx = r.tx.subscribe();
         let _ = r.tx.send(json!({ "t": "devices", "n": r.devices }).to_string().into());
         let hello = json!({ "t": "hello", "now": now_ms(), "clip": r.latest, "devices": r.devices });
-        (hello.to_string(), rx)
+        Some((hello.to_string(), rx))
     }
 
     fn leave(&self, room: &str) {
@@ -252,14 +276,22 @@ impl Clips {
             Ok(m) => m,
             Err(_) => return Some(error("Unknown message")),
         };
-        let Incoming::Clip { id, at, meta, blob } = msg else {
-            return Some(json!({ "t": "pong", "now": now_ms() }).to_string());
+        let (id, at, meta, blob) = match msg {
+            Incoming::Ping => return Some(json!({ "t": "pong", "now": now_ms() }).to_string()),
+            Incoming::End => {
+                self.end(room);
+                return None;
+            }
+            Incoming::Clip { id, at, meta, blob } => (id, at, meta, blob),
         };
         if !valid_id(&id) || meta.is_empty() || meta.len() > MAX_META {
             return Some(error("Malformed clip"));
         }
         let mut rooms = self.rooms.lock().unwrap();
         let r = rooms.get_mut(room)?;
+        if r.ended {
+            return Some(ENDED.into());
+        }
         // A clock running ahead mustn't let a device win every race from now on.
         let at = at.min(now_ms());
         if let Some(l) = &r.latest
@@ -303,6 +335,25 @@ impl Clips {
         None
     }
 
+    /// Ends the session: every device hears it, the clips go, and a tombstone stays behind.
+    fn end(&self, room: &str) {
+        let mut rooms = self.rooms.lock().unwrap();
+        let Some(r) = rooms.get_mut(room).filter(|r| !r.ended) else {
+            return;
+        };
+        r.ended = true;
+        r.active = now();
+        r.latest = None;
+        r.blobs.clear();
+        let _ = r.tx.send(ENDED.into());
+        let dir = self.room_dir(room);
+        let _ = std::fs::remove_dir_all(&dir);
+        let marked = std::fs::create_dir_all(&dir).and_then(|_| std::fs::write(dir.join("ended"), now().to_string()));
+        if let Err(e) = marked {
+            eprintln!("cannot mark clipboard room {room} as ended: {e}");
+        }
+    }
+
     fn blob(&self, room: &str, id: &str) -> Option<Arc<watch::Sender<BlobState>>> {
         let rooms = self.rooms.lock().unwrap();
         let r = rooms.get(room)?;
@@ -332,14 +383,14 @@ impl Clips {
             let mut rooms = self.rooms.lock().unwrap();
             let idle: Vec<String> = rooms
                 .iter()
-                .filter(|(_, r)| r.devices == 0 && r.active + ROOM_TTL < t)
+                .filter(|(_, r)| (r.devices == 0 || r.ended) && r.active + ROOM_TTL < t)
                 .map(|(k, _)| k.clone())
                 .collect();
             for k in &idle {
                 rooms.remove(k);
             }
             // Rooms nobody ever copied into have nothing on disk and can go as soon as they're empty.
-            rooms.retain(|_, r| r.devices > 0 || r.latest.is_some());
+            rooms.retain(|_, r| r.devices > 0 || r.latest.is_some() || r.ended);
             idle
         };
         for room in idle {
@@ -362,6 +413,7 @@ pub fn spawn_sweeper(state: AppStateRef) {
 #[serde(tag = "t", rename_all = "lowercase")]
 enum Incoming {
     Ping,
+    End,
     Clip {
         id: String,
         at: u64,
@@ -393,8 +445,12 @@ pub async fn ws(
         .on_upgrade(move |socket| room_socket(s, q.room, socket)))
 }
 
-async fn room_socket(s: AppStateRef, room: String, socket: WebSocket) {
-    let (hello, mut feed) = s.clips.join(&room);
+async fn room_socket(s: AppStateRef, room: String, mut socket: WebSocket) {
+    let Some((hello, mut feed)) = s.clips.join(&room) else {
+        let _ = socket.send(Message::Text(ENDED.into())).await;
+        let _ = socket.send(Message::Close(None)).await;
+        return;
+    };
     let (mut sink, mut stream) = socket.split();
     let mut ping = tokio::time::interval(PING_EVERY);
     let mut seen = Instant::now();
@@ -416,6 +472,10 @@ async fn room_socket(s: AppStateRef, room: String, socket: WebSocket) {
                 out = feed.recv() => match out {
                     Ok(text) => {
                         if sink.send(Message::Text(text.as_ref().into())).await.is_err() {
+                            break;
+                        }
+                        if text.as_ref() == ENDED {
+                            let _ = sink.send(Message::Close(None)).await;
                             break;
                         }
                     }
@@ -777,7 +837,7 @@ mod tests {
     fn newest_clip_wins_and_older_ones_are_turned_away() {
         let c = clips();
         let room = "R".repeat(ID_LEN);
-        let (_, mut feed) = c.join(&room);
+        let (_, mut feed) = c.join(&room).unwrap();
         let t = now_ms() - 10_000;
         let a = "a".repeat(ID_LEN);
         let b = "b".repeat(ID_LEN);
@@ -797,6 +857,28 @@ mod tests {
             seen.push(m.to_string());
         }
         assert_eq!(seen.iter().filter(|m| m.contains("\"t\":\"clip\"")).count(), 3);
+        let _ = std::fs::remove_dir_all(&c.dir);
+    }
+
+    #[test]
+    fn ending_a_room_tells_everyone_and_keeps_latecomers_out() {
+        let c = clips();
+        let room = "E".repeat(ID_LEN);
+        let (_, mut feed) = c.join(&room).unwrap();
+        c.handle(&room, &clip_msg(&"a".repeat(ID_LEN), 1000));
+        assert!(c.handle(&room, r#"{"t":"end"}"#).is_none());
+        let mut last = String::new();
+        while let Ok(m) = feed.try_recv() {
+            last = m.to_string();
+        }
+        assert_eq!(last, ENDED);
+        assert!(c.join(&room).is_none());
+        assert_eq!(
+            c.handle(&room, &clip_msg(&"b".repeat(ID_LEN), 2000)).as_deref(),
+            Some(ENDED)
+        );
+        assert!(c.blob(&room, &"a".repeat(ID_LEN)).is_none());
+        assert!(c.dir.join(&room).join("ended").exists());
         let _ = std::fs::remove_dir_all(&c.dir);
     }
 
