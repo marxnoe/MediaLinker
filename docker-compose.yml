@@ -12,10 +12,13 @@ services:
       DOMAIN: ${DOMAIN:?Set DOMAIN, e.g. DOMAIN=media.example.com}
       SCHEME: ${SCHEME:-https}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-500}
+      CLIP_MAX_MB: ${CLIP_MAX_MB:-100}
     volumes:
       - uploads:/data/uploads
       - shares:/data/shares
+      - clips:/data/clips
 
 volumes:
   uploads:
   shares:
+  clips:

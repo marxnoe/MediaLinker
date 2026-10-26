@@ -25,7 +25,7 @@ use tower_http::services::ServeFile;
 use crate::{ApiError, AppStateRef, FILE_CSP, save_field};
 
 /// No 0/O, 1/I/L, so codes survive being read out loud or typed from a screen.
-const ALPHABET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+pub const ALPHABET: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 const CODE_LEN: usize = 5;
 pub const TTLS: &[(&str, u64)] = &[("1h", 3600), ("24h", 86_400), ("7d", 7 * 86_400)];
 pub const DEFAULT_TTL: &str = "24h";
@@ -155,7 +155,7 @@ impl Store {
     }
 
     /// Counts a failed lookup; returns false once the client has used up its budget.
-    fn allow_lookup(&self, client: &str) -> bool {
+    pub fn allow_lookup(&self, client: &str) -> bool {
         let inner = self.inner.lock().unwrap();
         inner
             .misses
@@ -163,7 +163,7 @@ impl Store {
             .is_none_or(|&(start, n)| start + MISS_WINDOW < now() || n < MAX_MISSES)
     }
 
-    fn record_miss(&self, client: &str) {
+    pub fn record_miss(&self, client: &str) {
         let mut inner = self.inner.lock().unwrap();
         let t = now();
         let entry = inner.misses.entry(client.to_string()).or_insert((t, 0));
@@ -339,7 +339,7 @@ fn clean_name(raw: &str) -> String {
     if name.trim().is_empty() { "file".into() } else { name }
 }
 
-fn client_key(headers: &HeaderMap, addr: SocketAddr) -> String {
+pub fn client_key(headers: &HeaderMap, addr: SocketAddr) -> String {
     // Behind Traefik, like the old `trust proxy` setting.
     headers
         .get("x-forwarded-for")

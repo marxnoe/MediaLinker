@@ -17,7 +17,7 @@ RUN adduser -D -u 1000 app
 WORKDIR /app
 COPY --from=backend /build/target/release/medialinker ./
 COPY --from=frontend /build/dist/frontend/browser ./public
-RUN mkdir -p /data/uploads /data/shares && chown -R app:app /data /app
+RUN mkdir -p /data/uploads /data/shares /data/clips && chown -R app:app /data /app
 USER app
 EXPOSE 3000
 CMD ["./medialinker"]

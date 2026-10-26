@@ -1,3 +1,4 @@
+mod clip;
 mod share;
 
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
@@ -31,6 +32,8 @@ pub struct Config {
     pub max_mb: u64,
     pub upload_dir: PathBuf,
     pub share_dir: PathBuf,
+    pub clip_dir: PathBuf,
+    pub clip_max_mb: u64,
 }
 
 impl Config {
@@ -42,6 +45,7 @@ impl Config {
 pub struct AppState {
     pub cfg: Config,
     pub shares: share::Store,
+    pub clips: clip::Clips,
 }
 
 type AppStateRef = Arc<AppState>;
@@ -114,6 +118,7 @@ async fn config(State(s): State<AppStateRef>) -> Json<serde_json::Value> {
         "extensions": ALLOWED,
         "shareTtls": share::TTLS.iter().map(|(k, _)| k).collect::<Vec<_>>(),
         "shareDefaultTtl": share::DEFAULT_TTL,
+        "clipMaxMb": s.cfg.clip_max_mb,
     }))
 }
 
@@ -167,15 +172,22 @@ async fn main() {
         max_mb: env_or("MAX_UPLOAD_MB", 500),
         upload_dir: env_or("UPLOAD_DIR", PathBuf::from("/data/uploads")),
         share_dir: env_or("SHARE_DIR", PathBuf::from("/data/shares")),
+        clip_dir: env_or("CLIP_DIR", PathBuf::from("/data/clips")),
+        clip_max_mb: env_or("CLIP_MAX_MB", 100),
     };
     let public_dir: PathBuf = env_or("PUBLIC_DIR", PathBuf::from("public"));
     std::fs::create_dir_all(&cfg.upload_dir).expect("cannot create UPLOAD_DIR");
     std::fs::create_dir_all(&cfg.share_dir).expect("cannot create SHARE_DIR");
+    std::fs::create_dir_all(&cfg.clip_dir).expect("cannot create CLIP_DIR");
 
     let body_limit = DefaultBodyLimit::max((cfg.max_bytes() + 1024 * 1024) as usize);
     let shares = share::Store::load(&cfg.share_dir).await;
-    let state = Arc::new(AppState { cfg, shares });
+    // Encryption adds 16 bytes per 64 KiB chunk and a small header on top of the clip itself.
+    let clip_bytes = cfg.clip_max_mb * 1024 * 1024;
+    let clips = clip::Clips::load(&cfg.clip_dir, clip_bytes + clip_bytes / 4096 + 64 * 1024).await;
+    let state = Arc::new(AppState { cfg, shares, clips });
     share::spawn_sweeper(state.clone());
+    clip::spawn_sweeper(state.clone());
 
     let files = ServiceBuilder::new()
         .layer(SetResponseHeaderLayer::overriding(
@@ -202,6 +214,9 @@ async fn main() {
         .route("/share", post(share::create).layer(body_limit))
         .route("/share/{code}", get(share::info))
         .route("/s/{code}/file", get(share::file))
+        .route("/clip/pair", get(clip::pair))
+        .route("/clip/ws", get(clip::ws))
+        .route("/clip/{room}/blob/{id}", get(clip::get_blob).put(clip::put_blob))
         .nest_service("/f", files)
         .fallback_service(ServeDir::new(public_dir))
         .with_state(state.clone());
