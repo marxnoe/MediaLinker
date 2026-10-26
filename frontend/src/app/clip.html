@@ -1,0 +1,155 @@
+@if (saved(); as room) {
+  <na-stack gap="lg">
+    <na-card title="Shared clipboard">
+      <na-stack gap="md">
+        <na-text size="sm" tone="muted">
+          <span class="dot" [class.dot--on]="status() === 'online'"></span>
+          @switch (status()) {
+            @case ('online') {
+              Connected · {{ others() }}
+            }
+            @case ('connecting') {
+              Connecting…
+            }
+            @default {
+              Offline, reconnecting…
+            }
+          }
+        </na-text>
+
+        @if (shown(); as s) {
+          <na-stack gap="sm">
+            <na-text size="lg">
+              <strong>{{ describe(s) }}</strong>
+              <span class="from">{{
+                s.mine ? ' · from this ' + room.name : s.meta.from ? ' · from ' + s.meta.from : ''
+              }}</span>
+            </na-text>
+            @switch (s.state) {
+              @case ('receiving') {
+                <na-text tone="muted">Receiving {{ size(s.meta.size) }}…</na-text>
+              }
+              @case ('failed') {
+                <na-text
+                  ><span class="error">{{ s.error }}</span></na-text
+                >
+              }
+              @default {
+                @if (s.text !== undefined) {
+                  <pre class="clip-text">{{ s.text }}</pre>
+                } @else if (s.meta.kind === 'image') {
+                  <img class="preview" [src]="s.url" alt="The latest copied image" />
+                } @else {
+                  <na-text tone="muted"
+                    >{{ s.meta.entries?.join(', ') || s.meta.name }} ·
+                    {{ size(s.meta.size) }}</na-text
+                  >
+                }
+              }
+            }
+            <na-row gap="sm">
+              @if (s.meta.kind === 'files') {
+                <a
+                  class="download"
+                  [class.download--off]="s.state !== 'ready'"
+                  [href]="s.url"
+                  [attr.download]="s.meta.name"
+                  >Download</a
+                >
+              } @else {
+                <na-button variant="primary" [disabled]="s.state !== 'ready'" (pressed)="copy()">
+                  {{ copied() ? 'Copied!' : 'Copy' }}
+                </na-button>
+              }
+            </na-row>
+          </na-stack>
+        } @else {
+          <na-text tone="muted">Nothing copied yet. Copy something on a paired device.</na-text>
+        }
+      </na-stack>
+    </na-card>
+
+    <na-card
+      title="Send from this device"
+      subtitle="Phones can't sync in the background, so send by hand."
+    >
+      <na-stack gap="md">
+        <na-row gap="sm">
+          <na-button variant="primary" [loading]="sending()" (pressed)="paste()"
+            >Paste clipboard</na-button
+          >
+          <label class="file-button" [class.file-button--busy]="sending()">
+            <input type="file" [disabled]="sending()" (change)="pick($event)" />
+            Send a file
+          </label>
+        </na-row>
+        <na-field label="Or type here" hint="Ctrl+Enter to send.">
+          <textarea
+            naInput
+            rows="3"
+            [(ngModel)]="typed"
+            (keydown.control.enter)="sendTyped()"
+            (keydown.meta.enter)="sendTyped()"
+          ></textarea>
+        </na-field>
+        <na-row>
+          <na-button variant="secondary" [disabled]="!typed.trim()" (pressed)="sendTyped()"
+            >Send text</na-button
+          >
+        </na-row>
+      </na-stack>
+    </na-card>
+
+    @if (error()) {
+      <na-alert tone="danger" showIcon [title]="error()" closable />
+    }
+    @if (notice()) {
+      <na-text tone="muted" size="sm">{{ notice() }}</na-text>
+    }
+    <na-text tone="faint" size="sm">
+      End-to-end encrypted: the server only relays ciphertext. This browser is "{{ room.name }}".
+      <button class="link-button" type="button" (click)="forget()">Leave the room</button>
+    </na-text>
+  </na-stack>
+} @else {
+  <na-card
+    title="Join a shared clipboard"
+    subtitle="Run ml clip sync on a computer and type the code it shows, or scan its QR code."
+  >
+    <na-stack gap="md">
+      <na-field label="Pairing code">
+        <input
+          naInput
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="K7X-42PQ"
+          [(ngModel)]="codeText"
+          [disabled]="pairing()"
+          (keydown.enter)="join()"
+        />
+      </na-field>
+      <na-row>
+        <na-button
+          variant="primary"
+          [loading]="pairing()"
+          [disabled]="!codeText.trim()"
+          (pressed)="join()"
+          >Join</na-button
+        >
+      </na-row>
+      @if (error()) {
+        <na-text size="sm"
+          ><span class="error">{{ error() }}</span></na-text
+        >
+      }
+      @if (notice()) {
+        <na-text tone="muted" size="sm">{{ notice() }}</na-text>
+      }
+      <na-text tone="faint" size="sm">
+        Copies on your computers sync by themselves. On a phone, open this page to copy what's on
+        the shared clipboard or to send your own. <a href="#cli">How to install ml</a>.
+      </na-text>
+    </na-stack>
+  </na-card>
+}

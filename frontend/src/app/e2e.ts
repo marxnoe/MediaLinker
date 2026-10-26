@@ -7,7 +7,8 @@
 // The key is fresh per share and only ever travels in the link fragment, which browsers never send.
 
 export interface Header {
-  kind: 'text' | 'file';
+  /** `text` or `file` for shares; the shared clipboard also seals `clip` and `pair` messages. */
+  kind: string;
   name?: string;
   type?: string;
 }
@@ -104,18 +105,18 @@ function nonce(counter: number, last: boolean): Uint8Array<ArrayBuffer> {
   return iv;
 }
 
-function importKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+export function importKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
 }
 
-function toBase64Url(bytes: Uint8Array): string {
+export function toBase64Url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 }
 
-function fromBase64Url(s: string): Uint8Array<ArrayBuffer> | null {
+export function fromBase64Url(s: string): Uint8Array<ArrayBuffer> | null {
   if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
   try {
     const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));

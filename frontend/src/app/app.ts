@@ -22,6 +22,7 @@ import {
 } from 'newang';
 import { firstValueFrom } from 'rxjs';
 import { Cli } from './cli';
+import { Clip } from './clip';
 import { DecryptError, decrypt, encrypt, findKey, newKey, parseKey } from './e2e';
 
 interface Config {
@@ -56,6 +57,7 @@ const TTL_LABELS: Record<string, string> = { '1h': '1 hour', '24h': '24 hours', 
   selector: 'app-root',
   imports: [
     Cli,
+    Clip,
     FormsModule,
     NaAlert,
     NaApp,
@@ -80,8 +82,9 @@ const TTL_LABELS: Record<string, string> = { '1h': '1 hour', '24h': '24 hours', 
 export class App implements OnInit {
   private readonly http = inject(HttpClient);
 
-  // `#cli` shows the command line docs; a hash keeps the server's plain static file serving working.
-  protected readonly view = signal(location.hash === '#cli' ? 'cli' : 'share');
+  // `#cli` shows the command line docs and `#clip` the shared clipboard; a hash keeps the server's
+  // plain static file serving working, and keeps a pairing code in `#clip=CODE` off the server.
+  protected readonly view = signal(viewOf(location.hash));
 
   protected readonly codeLength = CODE_LENGTH;
   protected readonly maxMb = signal(0);
@@ -134,7 +137,7 @@ export class App implements OnInit {
 
   ngOnInit() {
     addEventListener('hashchange', () => {
-      this.view.set(location.hash === '#cli' ? 'cli' : 'share');
+      this.view.set(viewOf(location.hash));
       scrollTo(0, 0);
     });
 
@@ -196,7 +199,8 @@ export class App implements OnInit {
         this.http.get(`/s/${s.code}/file?download=1`, { responseType: 'blob' }),
       );
       const { header, content } = await decrypt(key, blob);
-      const shared: Share = { ...s, kind: header.kind, size: content.size };
+      const kind = header.kind === 'text' ? 'text' : 'file';
+      const shared: Share = { ...s, kind, size: content.size };
       if (header.kind === 'text') {
         shared.text = await content.text();
       } else {
@@ -424,6 +428,12 @@ export class App implements OnInit {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
+}
+
+function viewOf(hash: string) {
+  if (hash === '#cli') return 'cli';
+  if (hash === '#clip' || hash.startsWith('#clip=')) return 'clip';
+  return 'share';
 }
 
 const TYPES: Record<string, string> = {

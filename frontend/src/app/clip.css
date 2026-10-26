@@ -1,0 +1,103 @@
+:host {
+  display: block;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--na-text-faint, rgba(255, 255, 255, 0.4));
+}
+
+.dot--on {
+  background: var(--na-accent, #d4ef7a);
+}
+
+.from {
+  font-weight: 400;
+  color: var(--na-text-faint, rgba(255, 255, 255, 0.5));
+}
+
+.error {
+  color: var(--na-danger, #e2a3a3);
+}
+
+.clip-text {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+  padding: 12px 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--na-mono, ui-monospace, monospace);
+  font-size: 0.9rem;
+  background: var(--na-surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--na-border, rgba(255, 255, 255, 0.1));
+}
+
+.preview {
+  display: block;
+  max-width: 100%;
+  max-height: 50vh;
+  object-fit: contain;
+}
+
+.download,
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  height: var(--na-control-h-md, 40px);
+  padding: 0 16px;
+  box-sizing: border-box;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.download {
+  color: var(--na-accent-ink, #1b1b1b);
+  background: var(--na-accent, #d4ef7a);
+}
+
+.download--off {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.file-button {
+  position: relative;
+  align-self: stretch;
+  height: auto;
+  color: inherit;
+  border: 1px solid var(--na-border-strong, rgba(255, 255, 255, 0.2));
+}
+
+.file-button:focus-within,
+.download:focus-visible {
+  outline: var(--na-focus-ring, 2px solid currentColor);
+  outline-offset: var(--na-focus-offset, 2px);
+}
+
+.file-button--busy {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

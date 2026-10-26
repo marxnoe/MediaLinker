@@ -82,6 +82,31 @@ ml get K7QX2 --key 3q9Vh…        <span class="comment"># or the key on its own
     </na-stack>
   </na-card>
 
+  <na-card title="Shared clipboard">
+    <na-stack gap="md">
+      <na-text tone="muted">
+        <code>ml clip sync</code> keeps one clipboard on all your computers. Copy text, an image or
+        files on one and paste them on the others; copied files arrive as real files, so Ctrl+V in a
+        file manager pastes them. The first run starts a room and shows a pairing code and a QR
+        code; give the code to the next device.
+      </na-text>
+      <pre
+        class="cmd"
+      >ml clip sync                 <span class="comment"># first device: prints K7X-42PQ</span>
+ml clip sync K7X-42PQ        <span class="comment"># every other device</span>
+ml clip pair                 <span class="comment"># a code for one more device</span>
+ml clip autostart on         <span class="comment"># sync from login on</span>
+ml clip status               <span class="comment"># room, device, running or not</span>
+ml clip forget               <span class="comment"># leave the room on this device</span></pre>
+      <na-text tone="faint" size="sm">
+        End-to-end encrypted: the code sets up a key that only your devices hold, so the server
+        relays ciphertext it can't read. Devices remember their room and reconnect by themselves,
+        also after sleep. Files and folders up to 100 MB. On a phone, scan the QR code or open
+        <a href="#clip">the shared clipboard page</a> to copy and send by hand.
+      </na-text>
+    </na-stack>
+  </na-card>
+
   <na-card title="Shell completions">
     <na-stack gap="md">
       <na-text tone="muted">
