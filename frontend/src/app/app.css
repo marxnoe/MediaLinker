@@ -58,3 +58,45 @@
   outline: var(--na-focus-ring, 2px solid currentColor);
   outline-offset: var(--na-focus-offset, 2px);
 }
+
+/* Encrypted uploads read the file themselves, so they use this picker instead of na-upload. */
+.pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 132px;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  text-align: center;
+  background: var(--na-surface-1, rgba(255, 255, 255, 0.02));
+  border: 1px dashed var(--na-border-strong, rgba(255, 255, 255, 0.2));
+  border-radius: var(--na-radius-md, 0);
+  cursor: pointer;
+}
+
+.pick:hover,
+.pick:focus-within {
+  border-color: var(--na-accent, #d4ef7a);
+}
+
+.pick--busy {
+  cursor: progress;
+}
+
+.pick input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.pick__title {
+  font-weight: 600;
+}
+
+.pick__hint {
+  font-size: 0.8rem;
+  color: var(--na-text-faint, rgba(255, 255, 255, 0.5));
+}

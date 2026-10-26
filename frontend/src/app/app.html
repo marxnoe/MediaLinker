@@ -18,8 +18,12 @@
       } @else {
         <!-- Receive -->
         <na-card
-          [title]="share() ? 'Shared with you' : 'Got a code?'"
-          [subtitle]="share() ? '' : 'Type or paste it to see what was shared with you.'"
+          [title]="
+            share() ? 'Shared with you' : locked() ? 'This share is encrypted' : 'Got a code?'
+          "
+          [subtitle]="
+            share() || locked() ? '' : 'Type or paste it to see what was shared with you.'
+          "
         >
           @if (share(); as s) {
             <na-stack gap="md">
@@ -50,14 +54,49 @@
                   }
                 }
                 <na-row gap="sm">
-                  <a class="download" [href]="s.url + '?download=1'" [attr.download]="s.name">
+                  <a class="download" [href]="s.download" [attr.download]="s.name">
                     Download ({{ size(s.size) }})
                   </a>
                 </na-row>
               }
               <na-text tone="faint" size="sm"
-                >Code {{ s.code }} · {{ expiresIn(s.expiresAt) }}</na-text
+                >Code {{ s.code }} · {{ expiresIn(s.expiresAt)
+                }}{{ s.encrypted ? ' · End-to-end encrypted' : '' }}</na-text
               >
+            </na-stack>
+          } @else if (locked(); as s) {
+            <na-stack gap="md">
+              <na-text tone="muted">
+                Code {{ s.code }} was encrypted before it was uploaded, so the server can't read it.
+                Paste the full link you were given, or its key.
+              </na-text>
+              <na-field label="Link or key">
+                <input
+                  naInput
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="https://…/?code={{ s.code }}#k=…"
+                  [(ngModel)]="keyText"
+                  [disabled]="opening()"
+                  (keydown.enter)="submitKey()"
+                />
+              </na-field>
+              <na-row gap="sm">
+                <na-button
+                  variant="primary"
+                  [loading]="opening()"
+                  [disabled]="!keyText.trim()"
+                  (pressed)="submitKey()"
+                >
+                  Decrypt
+                </na-button>
+                <na-button variant="ghost" (pressed)="closeShare()">Cancel</na-button>
+              </na-row>
+              @if (receiveError()) {
+                <na-text size="sm"
+                  ><span class="error">{{ receiveError() }}</span></na-text
+                >
+              }
             </na-stack>
           } @else {
             <na-stack gap="md">
@@ -93,7 +132,25 @@
         <na-card title="Send something">
           @if (result(); as r) {
             <na-stack gap="md">
-              @if (r.type === 'code') {
+              @if (r.type === 'code' && r.key) {
+                <na-text tone="muted">
+                  Give this link to the other person. The key is in the part after #, which never
+                  reaches the server, so only people with the link can open it.
+                </na-text>
+                <na-link [href]="shareLink()">{{ shareLink() }}</na-link>
+                <na-row gap="sm">
+                  <na-button variant="primary" (pressed)="copy('link', shareLink())">
+                    {{ copied() === 'link' ? 'Copied!' : 'Copy link' }}
+                  </na-button>
+                  <na-button variant="secondary" (pressed)="copy('code', codeAndKey(r))">
+                    {{ copied() === 'code' ? 'Copied!' : 'Copy code for ml' }}
+                  </na-button>
+                </na-row>
+                <na-text tone="faint" size="sm"
+                  >Code {{ r.code }} on its own isn't enough to open it ·
+                  {{ expiresIn(r.expiresAt) }}</na-text
+                >
+              } @else if (r.type === 'code') {
                 <na-text tone="muted">Give this code to the other person:</na-text>
                 <div class="code" aria-label="Your code">{{ r.code }}</div>
                 <na-row gap="sm">
@@ -146,7 +203,39 @@
                 />
               }
 
-              @if (kind === 'file') {
+              @if (canEncrypt()) {
+                <na-stack gap="xs">
+                  <na-switch
+                    label="End-to-end encrypt"
+                    [(checked)]="encrypted"
+                    [disabled]="sending()"
+                  />
+                  <na-text tone="faint" size="sm">
+                    Encrypted in this browser before upload. The key goes only into the link, so the
+                    code on its own won't open it.
+                  </na-text>
+                </na-stack>
+              }
+
+              @if (kind === 'file' && encrypted && canEncrypt()) {
+                <na-stack gap="sm">
+                  <label
+                    class="pick"
+                    [class.pick--busy]="sending()"
+                    (dragover)="$event.preventDefault()"
+                    (drop)="onDrop($event)"
+                  >
+                    <input type="file" [disabled]="sending()" (change)="onPick($event)" />
+                    <span class="pick__title">{{
+                      sendStatus() || 'Drag a file here or click to browse'
+                    }}</span>
+                    <span class="pick__hint"
+                      >Any file · encrypted before it leaves this device</span
+                    >
+                  </label>
+                  <na-text tone="faint" size="sm">{{ uploadHint() }}</na-text>
+                </na-stack>
+              } @else if (kind === 'file') {
                 <na-stack gap="sm">
                   <na-upload
                     name="file"
@@ -177,7 +266,7 @@
                     [disabled]="!text.trim()"
                     (pressed)="sendText()"
                   >
-                    Get code
+                    {{ encrypted ? 'Encrypt and get link' : 'Get code' }}
                   </na-button>
                 </na-row>
               }

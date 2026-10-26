@@ -58,6 +58,30 @@ ml get K7QX2 -o - | less       <span class="comment"># write to stdout</span></p
     </na-stack>
   </na-card>
 
+  <na-card title="End-to-end encryption">
+    <na-stack gap="md">
+      <na-text tone="muted">
+        Add <code>--encrypt</code> (<code>-e</code>) and <code>ml</code> encrypts the share on your
+        machine before it uploads it, with AES-256-GCM and a fresh key. The server only stores
+        ciphertext and never sees the key, the file name or whether it's text. Instead of the bare
+        code, <code>ml send</code> prints <code>CODE.KEY</code>, and the link and QR code carry the
+        key after the <code>#</code>, which browsers never send to the server.
+      </na-text>
+      <pre
+        class="cmd"
+      >ml send -e taxes.pdf             <span class="comment"># prints K7QX2.3q9Vh…</span>
+ml get K7QX2.3q9Vh…              <span class="comment"># decrypt with the key</span>
+ml get 'https://…/?code=K7QX2#k=3q9Vh…'  <span class="comment"># or the whole link</span>
+ml get K7QX2 --key 3q9Vh…        <span class="comment"># or the key on its own</span></pre>
+      <na-text tone="faint" size="sm">
+        It works both ways with this page: turn on <em>End-to-end encrypt</em> when sending here and
+        <code>ml get</code> the link, or open a link from <code>ml send -e</code> in a browser. The
+        code on its own can't open an encrypted share, so pass on the link or <code>CODE.KEY</code>.
+        Encryption is off unless you ask for it.
+      </na-text>
+    </na-stack>
+  </na-card>
+
   <na-card title="Shell completions">
     <na-stack gap="md">
       <na-text tone="muted">
