@@ -46,6 +46,9 @@ pub struct Meta {
     #[serde(skip_serializing_if = "Option::is_none")]
     mime: Option<String>,
     size: u64,
+    /// The browser or `ml` encrypted the content; the server holds ciphertext and never the key.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    encrypted: bool,
     created_at: u64,
     expires_at: u64,
 }
@@ -227,6 +230,7 @@ impl Drop for Reservation<'_> {
 #[derive(Deserialize)]
 pub struct CreateQuery {
     ttl: Option<String>,
+    encrypted: Option<String>,
 }
 
 pub async fn create(
@@ -239,6 +243,7 @@ pub async fn create(
         .iter()
         .find(|(k, _)| *k == ttl_key)
         .ok_or_else(|| ApiError::bad("Unknown expiry"))?;
+    let encrypted = matches!(q.encrypted.as_deref(), Some("1" | "true"));
 
     while let Some(mut field) = multipart.next_field().await? {
         let kind = match field.name() {
@@ -246,6 +251,9 @@ pub async fn create(
             Some("text") => Kind::Text,
             _ => continue,
         };
+        if encrypted && kind == Kind::Text {
+            return Err(ApiError::bad("Encrypted shares are sent as a file"));
+        }
         let mut res = Reservation {
             store: &s.shares,
             code: s.shares.reserve(),
@@ -259,11 +267,17 @@ pub async fn create(
             name: None,
             mime: None,
             size: 0,
+            encrypted,
             created_at,
             expires_at: created_at + ttl,
         };
         if kind == Kind::File {
-            let name = clean_name(field.file_name().unwrap_or_default());
+            // The real name and type of an encrypted share are inside the ciphertext.
+            let name = if encrypted {
+                "encrypted.bin".into()
+            } else {
+                clean_name(field.file_name().unwrap_or_default())
+            };
             meta.mime = Some(
                 mime_guess::from_path(&name)
                     .first_or_octet_stream()
