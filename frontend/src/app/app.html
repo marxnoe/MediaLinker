@@ -3,7 +3,7 @@
     <na-stack gap="lg">
       <na-stack gap="sm">
         <na-heading level="1">Noecore MediaLinker</na-heading>
-        @if (view() === 'cli') {
+        @if (view() !== 'share') {
           <na-text tone="muted"><a href="#">← Back to sharing</a></na-text>
         } @else {
           <na-text tone="muted">
@@ -15,6 +15,8 @@
 
       @if (view() === 'cli') {
         <app-cli />
+      } @else if (view() === 'clip') {
+        <app-clip />
       } @else {
         <!-- Receive -->
         <na-card
@@ -279,7 +281,8 @@
         </na-card>
 
         <na-text tone="faint" size="sm">
-          Prefer the terminal? <a href="#cli">Use MediaLinker from the command line</a>.
+          Prefer the terminal? <a href="#cli">Use MediaLinker from the command line</a>. Want one
+          clipboard on all your devices? <a href="#clip">Shared clipboard</a>.
         </na-text>
       }
     </na-stack>
